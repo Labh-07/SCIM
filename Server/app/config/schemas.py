@@ -1,4 +1,5 @@
 from pydantic import BaseModel , ConfigDict , Field , EmailStr 
+from datetime import datetime
 
 #region login schema : 
 class UserBase(BaseModel):
@@ -71,4 +72,30 @@ class SocietyPrivateResponse(SocietyPubliResponse):
 class MakeSecratery(BaseModel):
     society_id:int
     user_id:int
+#endregion
+
+#region notices
+class AuthorResponse(BaseModel):
+    model_config=ConfigDict(from_attributes=True)
+
+    username:str
+
+class NoticeBase(BaseModel):
+    title:str = Field(min_length=1 , max_length=100)
+    content:str = Field(min_length=1,max_length=500)
+    important:bool = Field(default=False)
+
+class NoticeCreate(NoticeBase):
+    societyid:int
+    userid:int
+
+class NoticePublicResponse(NoticeBase):
+    model_config=ConfigDict(from_attributes=True)
+
+    id:int
+    createdon:datetime
+    author:AuthorResponse
+
+class NoticePrivateResponse(NoticePublicResponse):
+    pass
 #endregion

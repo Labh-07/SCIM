@@ -8,8 +8,8 @@ import ErrorBanner from "../common/ErrorBanner";
 import EmptyState from "../common/EmptyState";
 // `canCreate` lets the same component serve both the resident (read-only)
 // and admin (can post) views — pass canCreate={true} on the admin dashboard.
-export default function Notices({ }) {
-  const { isAdmin , notices, isLoading, error, refetch, addNotice } = useNotices();
+export default function Notices() {
+  const {handleDeleteClick, isAdmin , notices, isLoading, error, refetch, addNotice } = useNotices();
   const [showNoticeForm, setShowNoticeForm] = useState(false);
 
   return (
@@ -37,7 +37,7 @@ export default function Notices({ }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {notices.map((notice) => (
-            <NoticeCard key={notice._id} notice={notice}/>
+            <NoticeCard key={notice._id} notice={notice} handleDeleteClick={handleDeleteClick} isAdmin={isAdmin}/>
           ))}
         </div>
       )}

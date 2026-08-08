@@ -8,8 +8,7 @@ import Modal from "../common/Modal";
 const INITIAL_FORM = {
   title: "",
   content: "",
-  scheduleAt: new Date(),
-  isImportant: false,
+  important: false,
 };
 
 export default function NoticeForm({ onSubmit, onClose }) {
@@ -44,15 +43,6 @@ export default function NoticeForm({ onSubmit, onClose }) {
         </div>
 
         <div className="grid gap-2">
-          <label className="font-medium text-gray-700">Schedule Date & Time</label>
-          <DateTimePicker
-            onChange={(date) => setFormData({ ...formData, scheduleAt: date })}
-            value={formData.scheduleAt}
-            disableClock
-          />
-        </div>
-
-        <div className="grid gap-2">
           <label className="font-medium text-gray-700">Content</label>
           <textarea
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -67,8 +57,8 @@ export default function NoticeForm({ onSubmit, onClose }) {
           <input
             type="checkbox"
             id="important"
-            checked={formData.isImportant}
-            onChange={(e) => setFormData({ ...formData, isImportant: e.target.checked })}
+            checked={formData.important}
+            onChange={(e) => setFormData({ ...formData, important: e.target.checked })}
           />
           <label htmlFor="important">Mark as important</label>
         </div>

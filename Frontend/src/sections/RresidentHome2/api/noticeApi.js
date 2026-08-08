@@ -1,7 +1,9 @@
 import axiosClient from "./axiosClient";
 
 export const noticeApi = {
-  getAll: () => axiosClient.get("/notices").then((res) => res.data),
-  create: (payload) =>
-    axiosClient.post("/notices/add-notice", payload).then((res) => res.data),
+  getAll: (societyid) => axiosClient.get(`/api/society/${societyid}/notices`).then((res) => res.data),
+  create: (societyid , payload) =>
+    axiosClient.post(`/api/society/${societyid}/notices`, payload).then((res) => res.data),
+  delete:(societyid,noticeid) => 
+    axiosClient.delete(`/api/society/${societyid}/notice/${noticeid}`).then((res) => res.data),
 };
