@@ -1,5 +1,5 @@
 from pydantic import BaseModel , ConfigDict , Field , EmailStr 
-from datetime import datetime
+from datetime import datetime,UTC,timedelta
 
 #region login schema : 
 class UserBase(BaseModel):
@@ -98,4 +98,38 @@ class NoticePublicResponse(NoticeBase):
 
 class NoticePrivateResponse(NoticePublicResponse):
     pass
+#endregion
+
+#region events
+
+class EventBase(BaseModel):
+    title:str = Field(min_length=1 , max_length=100)
+    description:str = Field(min_length=1,max_length=500)
+    allday:bool = Field(default=False)
+    startdt:datetime=Field(default=datetime.now(UTC))
+    enddt:datetime=Field(default=datetime.now(UTC)+timedelta(days=1))
+
+class EventCreate(EventBase):
+    societyid:int
+    userid:int
+
+class EventPublicResponse(EventBase):
+    model_config=ConfigDict(from_attributes=True)
+
+    id:int
+    createdon:datetime
+    author:AuthorResponse
+
+class EventPrivateResponse(EventPublicResponse):
+    pass
+
+class EventUpdate(BaseModel):
+    model_config = ConfigDict(from_attribute =True)
+
+    title:str|None
+    description:str|None
+    allday:bool|None
+    startdt:datetime|None
+    enddt:datetime|None
+
 #endregion
