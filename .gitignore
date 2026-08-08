@@ -1,0 +1,25 @@
+# --- Python & uv Dependencies ---
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node & Vite (Frontend) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- Environment & Secrets ---
+.env
+.env.*
+!.env.example
+secrets.toml
+
+# --- OS & IDE Files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

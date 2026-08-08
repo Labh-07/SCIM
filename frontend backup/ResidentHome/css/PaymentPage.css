@@ -1,0 +1,107 @@
+/* Centering the Page Content */
+.payment-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #eef2f3, #d6e0f0);
+  animation: fadeInBg 1.5s ease-in-out;
+}
+
+/* Box Structure Styling */
+.payment-container {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  width: 380px;
+  animation: slideIn 1s ease-in-out;
+  transition: transform 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.payment-container:hover {
+  transform: translateY(-5px);
+}
+
+/* Heading Styling */
+.payment-container h2 {
+  font-size: 26px;
+  color: #333;
+  margin-bottom: 25px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+}
+
+/* Monthly Maintenance Text Styling */
+.maintenance-text {
+  font-size: 18px;
+  color: #555;
+  text-align: center;
+  margin-bottom: 15px; /* Space between text and button */
+  font-weight: 500;
+}
+
+/* Pay Button Styling */
+.pay-button {
+  background: linear-gradient(45deg, #ff6b6b, #f37254);
+  color: white;
+  border: none;
+  padding: 14px 30px;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  margin-top: 20px;
+}
+
+/* Hover Effect */
+.pay-button:hover {
+  background: linear-gradient(45deg, #e65b3b, #ff7b6b);
+  transform: scale(1.08);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Ripple Effect */
+.pay-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  transform: scale(0);
+  opacity: 1;
+  transition: transform 0.6s, opacity 0.8s;
+}
+
+.pay-button:active::after {
+  transform: scale(12);
+  opacity: 0;
+}
+
+/* Keyframe Animations */
+@keyframes fadeInBg {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

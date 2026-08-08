@@ -1,0 +1,5 @@
+.auth_container { display: flex; align-items: center; justify-content: center; height: 100vh; }
+.auth_img img { width: 100%; max-height: 500px; }
+.auth_form { width: 300px; padding: 20px; text-align: center; }
+.button { background-color: blue; color: white; padding: 10px; }
+.redirect-text { margin-top: 10px; cursor: pointer; }
