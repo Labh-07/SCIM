@@ -1,15 +1,22 @@
 from typing import Annotated
-from fastapi import APIRouter,Depends,status
+from fastapi import APIRouter,Depends,status , UploadFile , Form , File
 from fastapi.exceptions import HTTPException
 
-from app.config.schemas import SocietyCreate , SocietyPrivateResponse , SocietyPubliResponse , UserPrivateResponse , UserUpdate,SocietyPubliResponse , SocietyPrivateResponse ,UserPublicResponse , MakeSecratery , NoticeCreate,NoticePublicResponse,EventUpdate,NoticePrivateResponse, EventCreate , EventPublicResponse , EventPrivateResponse
+from app.config.schemas import SocietyCreate , SocietyPrivateResponse , SocietyPubliResponse , UserPrivateResponse , UserUpdate,SocietyPubliResponse , SocietyPrivateResponse ,UserPublicResponse , MakeSecratery , NoticeCreate,NoticePublicResponse,EventUpdate,NoticePrivateResponse, EventCreate , EventPublicResponse , EventPrivateResponse , PostPublicResponse , PostPrivateResponse , PostCreate
 from app.config.database import get_db
-from app.models.model import Society,User,Notice,Event
+from app.models.model import Society,User,Notice,Event,Post
 from app.config.auth import CurrntUser
+from app.config.config import settings
+from app.config.image_utils import process_post_image,delete_post_image,upload_post_image
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select,func 
+from starlette.concurrency import run_in_threadpool  ####### note the import
+from sqlalchemy import select,func
 from sqlalchemy.orm import joinedload
 
+from botocore.exceptions import ClientError,ValidationError
+
+from PIL import UnidentifiedImageError 
 router = APIRouter()
 
 #region society
@@ -66,9 +73,9 @@ async def get_all_residents(society_id:int , db:Annotated[AsyncSession,Depends(g
 @router.patch("/{society_id}/resident/{resident_id}",response_model=UserPrivateResponse)
 async def update_resident(society_id:int ,resident_id:int, updated_data :UserUpdate, current_user:CurrntUser , db:Annotated[AsyncSession,Depends(get_db)]):
 
-    if current_user.role != "Admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
-
+    if current_user.role.lower() != "admin":
+           raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+   
     result =await db.execute(select(Society).where(Society.id == society_id))  
     society_exist = result.scalars().first()
     if not society_exist:
@@ -99,14 +106,20 @@ async def update_resident(society_id:int ,resident_id:int, updated_data :UserUpd
 #region notices 
 
 @router.post("/{society_id}/notices",response_model=NoticePrivateResponse,status_code=status.HTTP_201_CREATED,tags=["Notice"])
-async def create_notice(society_id:int,notice_data:NoticeCreate , db:Annotated[AsyncSession,Depends(get_db)]):
-    result =await db.execute(select(Society).where(Society.id == notice_data.societyid))
+async def create_notice(society_id:int,notice_data:NoticeCreate,current_user:CurrntUser , db:Annotated[AsyncSession,Depends(get_db)]):
+
+    
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+
+
+    result =await db.execute(select(Society).where(Society.id == society_id))
     society_exist = result.scalars().first()
 
     if not society_exist:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
 
-    result =await db.execute(select(User).where(User.id == notice_data.userid , func.lower(User.role) == "admin"))
+    result =await db.execute(select(User).where(User.id == current_user.id , func.lower(User.role) == "admin"))
     user_exist = result.scalars().first()
 
     if not user_exist:
@@ -123,7 +136,7 @@ async def create_notice(society_id:int,notice_data:NoticeCreate , db:Annotated[A
         title = notice_data.title,
         content = notice_data.content,
         important = notice_data.important,
-        userid = notice_data.userid,
+        userid = current_user.id,
         societyid = society_id,
     )
 
@@ -148,7 +161,12 @@ async def get_all_notice(society_id:int,db:Annotated[AsyncSession,Depends(get_db
     return result.scalars().all()
 
 @router.delete("/{society_id}/notice/{notice_id}",status_code=status.HTTP_200_OK,tags=["Notice"])
-async def delete_notice(society_id:int,notice_id:int,db:Annotated[AsyncSession,Depends(get_db)]):
+async def delete_notice(society_id:int,notice_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
+
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+
+    
     result =await db.execute(select(Society).where(Society.id == society_id))
     society_exist = result.scalars().first()
 
@@ -172,14 +190,18 @@ async def delete_notice(society_id:int,notice_id:int,db:Annotated[AsyncSession,D
 #region events 
 
 @router.post("/{society_id}/events",response_model=EventPrivateResponse,status_code=status.HTTP_201_CREATED,tags=["Event"])
-async def create_event(society_id:int,event_data:EventCreate , db:Annotated[AsyncSession,Depends(get_db)]):
-    result =await db.execute(select(Society).where(Society.id == event_data.societyid))
+async def create_event(society_id:int,event_data:EventCreate ,current_user:CurrntUser, db:Annotated[AsyncSession,Depends(get_db)]):
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
     society_exist = result.scalars().first()
 
     if not society_exist:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
 
-    result =await db.execute(select(User).where(User.id == event_data.userid , func.lower(User.role) == "admin"))
+    result =await db.execute(select(User).where(User.id == current_user.id , func.lower(User.role) == "admin"))
     user_exist = result.scalars().first()
 
     if not user_exist:
@@ -199,7 +221,7 @@ async def create_event(society_id:int,event_data:EventCreate , db:Annotated[Asyn
         allday = event_data.allday,
         description = event_data.description,
         societyid = society_id,
-        userid = event_data.userid,
+        userid = current_user.id,
     )
 
     db.add(new_event)
@@ -241,10 +263,9 @@ async def get_event(society_id:int,event_id:int,db:Annotated[AsyncSession,Depend
 @router.patch("/{society_id}/events/{event_id}",status_code=status.HTTP_200_OK,response_model=EventPrivateResponse,tags=["Event"])
 async def update_event(society_id:int,event_id:int,event_data:EventUpdate,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
 
-    if current_user.role != "Admin":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
-
-
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+    
     
     result =await db.execute(select(Society).where(Society.id == society_id))
     society_exist = result.scalars().first()
@@ -275,9 +296,9 @@ async def update_event(society_id:int,event_id:int,event_data:EventUpdate,curren
 @router.delete("/{society_id}/events/{event_id}",status_code=status.HTTP_200_OK,tags=["Event"])
 async def delete_event(society_id:int,event_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
 
-    if current_user.role != "Admin":
+    if current_user.role.lower() != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
-    
+ 
     result =await db.execute(select(Society).where(Society.id == society_id))
     society_exist = result.scalars().first()
 
@@ -294,6 +315,158 @@ async def delete_event(society_id:int,event_id:int,current_user:CurrntUser,db:An
     await db.commit()
 
     return {"message" : "Delete succesfully"}
+
+
+#endregion
+
+#region posts 
+
+@router.post("/{society_id}/posts",response_model=PostPrivateResponse,status_code=status.HTTP_201_CREATED,tags=["Posts"])
+async def create_post(  
+    society_id: int,   
+    data: Annotated[str, Form(...)],    
+    current_user:CurrntUser,         
+    db:Annotated[AsyncSession,Depends(get_db)],
+    file: Annotated[UploadFile | None, File()] = None,  
+  ):
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+
+    
+    try:
+        post_data = PostCreate.model_validate_json(data)
+    except ValidationError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=err.errors(),
+        ) from err
+
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result =await db.execute(select(User).where(User.id == current_user.id , func.lower(User.role) == "admin"))
+    user_exist = result.scalars().first()
+
+    if not user_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="User not exist")
+
+    result = await db.execute(select(Post).where(func.lower(Post.title) == post_data.title.lower()))
+    post_exist = result.scalars().first()
+
+    if post_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Title is already exist")
+
+    new_filename = None
+
+    if file:
+        content = await file.read()
+
+        if len(content) > settings.max_upload_size_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"File too large. Maximum size is "
+                    f"{settings.max_upload_size_bytes // (1024 * 1024)}MB"
+                ),
+            )
+
+        try:
+            processed_bytes, new_filename = await run_in_threadpool(
+                process_post_image,
+                content,
+            )
+
+        except UnidentifiedImageError as err:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid image file. Please upload a valid image.",
+            ) from err
+
+        try:
+            await upload_post_image(
+                processed_bytes,
+                new_filename,
+            )
+
+        except ClientError as err:
+            print("S3 ERROR:", err)
+            print(
+                "S3 ERROR CODE:",
+                err.response.get("Error", {}).get("Code"),
+            )
+            print(
+                "S3 ERROR MESSAGE:",
+                err.response.get("Error", {}).get("Message"),
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to upload image",
+            ) from err 
+        
+    new_post=Post(
+        title = post_data.title,
+        caption = post_data.caption,
+        userid = current_user.id,
+        societyid = society_id,
+        postimagefilename=new_filename,
+    )
+
+    db.add(new_post)
+    await db.commit()
+    await db.refresh(new_post)
+
+    new_post.author = user_exist 
+    return new_post
+
+@router.get("/{society_id}/posts",tags=["Post"])
+async def get_all_posts(society_id:int,db:Annotated[AsyncSession,Depends(get_db)]) -> list[PostPublicResponse]:
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result = await db.execute(select(Post).options(joinedload(Post.author)).where(Post.societyid == society_id))
+
+    return result.scalars().all()
+
+@router.delete("/{society_id}/posts/{post_id}",status_code=status.HTTP_200_OK,tags=["Post"])
+async def delete_notice(society_id:int,post_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update resident")
+
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post_exist = result.scalars().first()
+
+    if not post_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST ,detail="Post not exist")
+
+    post_image = post_exist.postimagefilename
+
+    await db.delete(post_exist)
+    await db.commit()
+
+    if post_image:
+        await delete_post_image(post_image)
+
+    return {"message" : "Delete succesfully"}
+
+
+#endregion
+
+#region complaints
 
 
 #endregion

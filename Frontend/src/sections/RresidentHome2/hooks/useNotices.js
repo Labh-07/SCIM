@@ -31,7 +31,6 @@ export function useNotices() {
   const addNotice = async (payload) => {
     payload = {
       ...payload,
-      userid: userData?.id,
       societyid: userData?.societyid,
     };
     const created = await noticeApi.create(userData?.societyid, payload);

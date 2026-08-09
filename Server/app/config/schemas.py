@@ -86,8 +86,7 @@ class NoticeBase(BaseModel):
     important:bool = Field(default=False)
 
 class NoticeCreate(NoticeBase):
-    societyid:int
-    userid:int
+    pass
 
 class NoticePublicResponse(NoticeBase):
     model_config=ConfigDict(from_attributes=True)
@@ -111,7 +110,6 @@ class EventBase(BaseModel):
 
 class EventCreate(EventBase):
     societyid:int
-    userid:int
 
 class EventPublicResponse(EventBase):
     model_config=ConfigDict(from_attributes=True)
@@ -132,4 +130,25 @@ class EventUpdate(BaseModel):
     startdt:datetime|None
     enddt:datetime|None
 
+#endregion
+
+#region posts
+
+class PostBase(BaseModel):
+    title:str = Field(min_length=1 , max_length=100)
+    caption:str = Field(min_length=1,max_length=500)
+
+class PostCreate(PostBase):
+    pass
+
+class PostPublicResponse(PostBase):
+    model_config=ConfigDict(from_attributes=True)
+
+    id:int
+    createdon:datetime
+    author:AuthorResponse
+    postimage_path:str
+
+class PostPrivateResponse(PostPublicResponse):
+    pass
 #endregion

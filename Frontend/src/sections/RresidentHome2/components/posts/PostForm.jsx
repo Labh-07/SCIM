@@ -18,11 +18,16 @@ export default function PostForm({ onSubmit, onClose }) {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      const payload = new FormData();
-      payload.append("title", formData.title);
-      payload.append("caption", formData.caption);
-      payload.append("image", formData.image);
-      await onSubmit(payload);
+      const formatedFormData = new FormData()
+
+      if(formData?.image){
+        formatedFormData.append("file" , formData?.image)
+      }
+        
+
+      formatedFormData.append("data",JSON.stringify({title:formData.title , caption:formData.caption}))
+
+      await onSubmit(formatedFormData);
       onClose();
     } catch (err) {
       console.error("Error creating post:", err);
@@ -58,7 +63,7 @@ export default function PostForm({ onSubmit, onClose }) {
 
         <div className="grid gap-2">
           <label className="font-medium text-gray-700">Image</label>
-          <input type="file" accept="image/*" onChange={handleImageChange} required />
+          <input type="file" accept="image/*" onChange={handleImageChange} />
           {previewImage && (
             <img
               src={previewImage}

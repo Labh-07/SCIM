@@ -7,8 +7,8 @@ import LoadingSpinner from "../common/LoadingSpinner";
 import ErrorBanner from "../common/ErrorBanner";
 import EmptyState from "../common/EmptyState";
 
-export default function Posts({ canCreate = false }) {
-  const { posts, isLoading, error, addPost } = usePosts();
+export default function Posts() {
+  const {handleDeletePost,isAdmin, posts, isLoading, error, addPost } = usePosts();
   const [showPostForm, setShowPostForm] = useState(false);
 
   return (
@@ -17,7 +17,7 @@ export default function Posts({ canCreate = false }) {
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Pen size={22} /> Posts
         </h1>
-        {canCreate && (
+        {isAdmin && (
           <button
             className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             onClick={() => setShowPostForm(true)}
@@ -36,7 +36,7 @@ export default function Posts({ canCreate = false }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {posts.map((post) => (
-            <PostCard key={post._id} post={post} />
+            <PostCard key={post._id} post={post} isAdmin={isAdmin} onDelete={handleDeletePost}/>
           ))}
         </div>
       )}

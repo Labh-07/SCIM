@@ -81,7 +81,6 @@ const loadEvents = useCallback(async () => {
     setError(null);
     payload={
       ...payload,
-      userid:userData?.id,
       societyid:userData?.societyid,
     }
     try {

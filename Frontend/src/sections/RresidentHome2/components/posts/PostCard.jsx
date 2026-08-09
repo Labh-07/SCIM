@@ -1,13 +1,12 @@
 import React from "react";
+import { Trash2 } from "lucide-react";
 
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:8080";
-
-export default function PostCard({ post }) {
+export default function PostCard({ post ,isAdmin , onDelete}) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
-      {post.imageUrl && (
+    <div className="border w-100 border-gray-200 rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
+      {post.postimage_path && (
         <img
-          src={`${API_BASE_URL}/${post.imageUrl}`}
+          src={`${post.postimage_path}`}
           alt={post.title}
           className="w-full h-48 object-cover"
         />
@@ -16,6 +15,17 @@ export default function PostCard({ post }) {
         <h2 className="text-lg font-semibold text-blue-600 mb-1">{post.title}</h2>
         <p className="text-gray-700">{post.caption}</p>
       </div>
+
+      {isAdmin && (
+    <button
+        type="button"
+        onClick={() => onDelete(post.id)}
+        className="p-2 text-red-600 hover:bg-red-50 rounded-md transition"
+        title="Delete post"
+    >
+        <Trash2 size={18} />
+    </button>
+)}
     </div>
   );
 }
