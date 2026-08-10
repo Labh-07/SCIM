@@ -2,9 +2,9 @@ from typing import Annotated
 from fastapi import APIRouter,Depends,status , UploadFile , Form , File
 from fastapi.exceptions import HTTPException
 
-from app.config.schemas import SocietyCreate , SocietyPrivateResponse , SocietyPubliResponse , UserPrivateResponse , UserUpdate,SocietyPubliResponse , SocietyPrivateResponse ,UserPublicResponse , MakeSecratery , NoticeCreate,NoticePublicResponse,EventUpdate,NoticePrivateResponse, EventCreate , EventPublicResponse , EventPrivateResponse , PostPublicResponse , PostPrivateResponse , PostCreate
+from app.config.schemas import SocietyCreate , SocietyPrivateResponse , SocietyPubliResponse , UserPrivateResponse , UserUpdate,SocietyPubliResponse , SocietyPrivateResponse ,UserPublicResponse , MakeSecratery , NoticeCreate,NoticePublicResponse,EventUpdate,NoticePrivateResponse, EventCreate , EventPublicResponse , EventPrivateResponse , PostPublicResponse , PostPrivateResponse , PostCreate , ComplaintPublicResponse , ComplaintCreate ,ComplaintPrivateResponse , ComplaintUpdate ,complaintStats
 from app.config.database import get_db
-from app.models.model import Society,User,Notice,Event,Post
+from app.models.model import Society,User,Notice,Event,Post,Complaint
 from app.config.auth import CurrntUser
 from app.config.config import settings
 from app.config.image_utils import process_post_image,delete_post_image,upload_post_image
@@ -467,6 +467,152 @@ async def delete_notice(society_id:int,post_id:int,current_user:CurrntUser,db:An
 #endregion
 
 #region complaints
+
+
+
+@router.post("/{society_id}/complaints",response_model=ComplaintPrivateResponse,status_code=status.HTTP_201_CREATED,tags=["Complaints"])
+async def create_complaint(  
+    society_id: int,   
+    complaint_data: ComplaintCreate,    
+    current_user:CurrntUser,         
+    db:Annotated[AsyncSession,Depends(get_db)],
+  ):
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result =await db.execute(select(User).where(User.id == current_user.id))
+    user_exist = result.scalars().first()
+
+    if not user_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="User not exist")
+        
+    new_complaint=Complaint(
+        residentname = current_user.username,
+        title = complaint_data.title,
+        description = complaint_data.description,
+        block = current_user.block,
+        flatno = current_user.flatno,
+
+        userid = current_user.id,
+        societyid = society_id,
+    )
+
+    db.add(new_complaint)
+    await db.commit()
+    await db.refresh(new_complaint)
+
+    new_complaint.user = user_exist 
+    return new_complaint
+
+@router.get("/{society_id}/complaints",tags=["Complaints"])
+async def get_all_complaints(society_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]) -> list[ComplaintPublicResponse]:
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    if current_user.role.lower() == "admin":
+        result = await db.execute(select(Complaint).options(joinedload(Complaint.user)).where(Complaint.societyid == society_id))
+    
+        return result.scalars().all()
+    else:
+        result = await db.execute(select(Complaint).options(joinedload(Complaint.user)).where(Complaint.societyid == society_id , Complaint.userid == current_user.id))
+
+        return result.scalars().all()
+
+
+@router.get("/{society_id}/complaints/stats",status_code=status.HTTP_200_OK,response_model=complaintStats,tags=["Complaints"])
+async def get_complaint_states(society_id:int,db:Annotated[AsyncSession,Depends(get_db)]):
+
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    stats = {
+        "total":0,
+        "in_progress":0,
+        "pending":0,
+        "solved":0,
+        "blockA":0,
+        "blockB":0,
+    }
+
+    result = await db.execute(select(Complaint).where(Complaint.societyid == society_id))
+
+    all_complaints = result.scalars().all()
+
+    stats["total"] = len(all_complaints)
+
+    for complaint in all_complaints:
+        if complaint.block.lower() == "a":
+            stats["blockA"] = stats["blockA"] + 1
+        elif complaint.block.lower() == "b":
+            stats["blockB"] = stats["blockB"] + 1
+
+        stats[complaint.status.lower()] = stats[complaint.status.lower()] + 1  
+
+    return stats
+
+@router.patch("/{society_id}/complaints/{complaint_id}",status_code=status.HTTP_200_OK,response_model=ComplaintPrivateResponse,tags=["Complaints"])
+async def update_complaint(society_id:int,complaint_id:int,complaint_data:ComplaintUpdate,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
+
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update complaint")
+    
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result = await db.execute(select(Complaint).options(joinedload(Complaint.user)).where(Complaint.id == complaint_id))
+    db_complaint = result.scalars().first()
+
+    if not db_complaint:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST ,detail="Complaint not exist")
+
+    update_complaint_dict = complaint_data.model_dump(exclude_unset=True)
+    
+    if not update_complaint_dict:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+
+    for key,value in update_complaint_dict.items():
+        setattr(db_complaint , key , value)
+
+    await db.commit()
+    await db.refresh(db_complaint)
+    
+    return db_complaint
+
+
+@router.delete("/{society_id}/complaints/{complaint_id}",status_code=status.HTTP_200_OK,tags=["Complaints"])
+async def delete_complaint(society_id:int,complaint_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update complaint")
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result = await db.execute(select(Complaint).where(Complaint.id == complaint_id))
+    complaint_exist = result.scalars().first()
+
+    if not complaint_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST ,detail="Complaint not exist")
+
+    await db.delete(complaint_exist)
+    await db.commit()
+
+    return {"message" : "Delete succesfully"}
 
 
 #endregion

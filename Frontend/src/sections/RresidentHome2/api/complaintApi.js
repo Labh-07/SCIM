@@ -1,13 +1,27 @@
 import axiosClient from "./axiosClient";
 
 export const complaintApi = {
-  getAll: () => axiosClient.get("/api/complaints").then((res) => res.data),
-  getStats: () =>
-    axiosClient.get("/api/complaints/stats").then((res) => res.data),
-  create: (payload) =>
-    axiosClient.post("/api/complaints", payload).then((res) => res.data),
-  updateStatus: (id, status) =>
+  getAll: (societyid) =>
     axiosClient
-      .patch(`/api/complaints/${id}/status`, { status })
+      .get(`/api/society/${societyid}/complaints`)
+      .then((res) => res.data),
+  getStats: (societyid) =>
+    axiosClient
+      .get(`/api/society/${societyid}/complaints/stats`)
+      .then((res) => res.data),
+  create: (payload, societyid) =>
+    axiosClient
+      .post(`/api/society/${societyid}/complaints`, payload)
+      .then((res) => res.data),
+  updateComplaint: (societyid, complaintid, status, comment) =>
+    axiosClient
+      .patch(`/api/society/${societyid}/complaints/${complaintid}`, {
+        status,
+        comment,
+      })
+      .then((res) => res.data),
+  deleteComplaint: (societyid, complaintid) =>
+    axiosClient
+      .delete(`/api/society/${societyid}/complaints/${complaintid}`)
       .then((res) => res.data),
 };

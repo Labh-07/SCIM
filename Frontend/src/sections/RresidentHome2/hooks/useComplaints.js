@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { complaintApi } from "../api/complaintApi";
+import { useAuth } from "../context/AuthContext";
+
 
 export function useComplaints(enabled) {
+  const { userData , isAdmin } = useAuth();
+  
   const [complaints, setComplaints] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
-    solved: 0,
     pending: 0,
+    in_progress:0,
+    solved: 0,
     blockA: 0,
     blockB: 0,
   });
@@ -19,9 +24,11 @@ export function useComplaints(enabled) {
     setError(null);
     try {
       const [complaintsData, statsData] = await Promise.all([
-        complaintApi.getAll(),
-        complaintApi.getStats(),
+        complaintApi.getAll(userData.societyid),
+        complaintApi.getStats(userData.societyid),
       ]);
+      console.log(complaintsData)
+      console.log(statsData)
       setComplaints(complaintsData);
       setStats(statsData);
     } catch (err) {
@@ -37,14 +44,19 @@ export function useComplaints(enabled) {
   }, [load]);
 
   const submitComplaint = async (payload) => {
-    await complaintApi.create(payload);
+    await complaintApi.create(payload,userData?.societyid);
     await load();
   };
 
-  const updateStatus = async (id, status) => {
-    await complaintApi.updateStatus(id, status);
+  const updateStatus = async (complaint_id, status , comment) => {
+    await complaintApi.updateComplaint(userData?.societyid,complaint_id, status , comment);
     await load();
   };
 
-  return { complaints, stats, isLoading, error, refetch: load, submitComplaint, updateStatus };
+  const handleDeleteComplaint = async (complaintid) => {
+    await complaintApi?.deleteComplaint(userData?.societyid , complaintid)
+    await load();
+  }
+
+  return { handleDeleteComplaint,userData , isAdmin,complaints, stats, isLoading, error, refetch: load, submitComplaint, updateStatus };
 }

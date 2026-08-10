@@ -152,3 +152,37 @@ class PostPublicResponse(PostBase):
 class PostPrivateResponse(PostPublicResponse):
     pass
 #endregion
+
+class ComplaintBase(BaseModel):
+    residentname:str|None
+    title:str = Field(min_length=1,max_length=100)
+    description:str = Field(min_length=1,max_length=500)
+
+class complaintStats(BaseModel):
+    total:int
+    solved:int
+    pending:int
+    in_progress:int
+    blockA:int
+    blockB:int
+    
+class ComplaintCreate(ComplaintBase):
+    pass
+
+class ComplaintUpdate(BaseModel):
+    status:str|None
+    comment:str|None
+
+class ComplaintPublicResponse(ComplaintBase):
+    model_config=ConfigDict(from_attributes=True)
+
+    id:int
+    createdon:datetime
+    block:str
+    flatno:int
+    status:str|None
+    comment:str|None
+    
+
+class ComplaintPrivateResponse(ComplaintPublicResponse):
+    pass

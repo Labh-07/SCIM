@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import ErrorBanner from "../common/ErrorBanner";
 
-export default function ComplaintForm({ defaultName, defaultBlock, defaultFlatNo, onSubmit }) {
+export default function ComplaintForm ({ onSubmit }) {
   const [formData, setFormData] = useState({
-    name: defaultName || "",
+    residentname: "",
     title: "",
     description: "",
-    block: defaultBlock || "",
-    flatNo: defaultFlatNo || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -28,7 +26,7 @@ export default function ComplaintForm({ defaultName, defaultBlock, defaultFlatNo
 
     try {
       setIsSubmitting(true);
-      await onSubmit({ ...formData, status: "Pending" });
+      await onSubmit({ ...formData, status: "pending" });
       setFormData((prev) => ({ ...prev, title: "", description: "" }));
     } catch (err) {
       setFormError(err.response?.data?.message || "Failed to submit complaint");
@@ -49,10 +47,10 @@ export default function ComplaintForm({ defaultName, defaultBlock, defaultFlatNo
           <input
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             id="name"
-            name="name"
+            name="residentname"
             placeholder="Enter your Name here"
             type="text"
-            value={formData.name}
+            value={formData.residentname}
             onChange={handleChange}
             required
           />

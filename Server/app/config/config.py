@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     database_url:str
 
     secret_key:SecretStr
-    token_expiration_time:int = 30
+    token_expiration_time:int = 360
     algorithm:str ='HS256'
 
     # S3 Configuration

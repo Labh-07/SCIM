@@ -24,7 +24,7 @@ class Society(Base):
     notices:Mapped[list["Notice"]] = relationship(back_populates="society",cascade="all, delete-orphan")
     events:Mapped[list["Event"]] = relationship(back_populates="society",cascade="all, delete-orphan")
     posts:Mapped[list["Post"]] = relationship(back_populates="society",cascade="all, delete-orphan")
-
+    complaints:Mapped[list["Complaint"]] = relationship(back_populates="society",cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -49,6 +49,7 @@ class User(Base):
     notices:Mapped[list["Notice"]] =  relationship(back_populates="author")
     events:Mapped[list["Event"]] =  relationship(back_populates="author")
     posts:Mapped[list["Post"]] =  relationship(back_populates="author")
+    complaints:Mapped[list["Complaint"]] = relationship(back_populates="user")
                                             
 
 class Notice(Base):
@@ -105,3 +106,23 @@ class Post(Base):
     #relation
     society:Mapped["Society"] = relationship(back_populates="posts")
     author:Mapped["User"] = relationship(back_populates="posts")
+
+class Complaint(Base):
+    __tablename__="complaints"
+
+    id:Mapped[int]=mapped_column(Integer , primary_key=True , index=True)
+    residentname:Mapped[str]=mapped_column(String(50),nullable=True)
+    title:Mapped[str]=mapped_column(String(100) , nullable=False)
+    description:Mapped[str]=mapped_column(String(500),nullable=False)
+    status:Mapped[str]=mapped_column(String(20),nullable=False,default="pending")
+    createdon:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda: datetime.now(UTC))
+    comment:Mapped[str]=mapped_column(String(200),nullable=True)
+
+    #user data which doing the complaints
+    societyid:Mapped[int]=mapped_column(ForeignKey("society.id"),nullable=False,index=True)
+    userid:Mapped[int]=mapped_column(ForeignKey("users.id"),nullable=False,index=True)
+    block:Mapped[str]=mapped_column(String(5),nullable=False)
+    flatno:Mapped[int]=mapped_column(Integer , nullable=False)
+
+    society:Mapped["Society"]=relationship(back_populates="complaints")
+    user:Mapped["User"]=relationship(back_populates="complaints")
