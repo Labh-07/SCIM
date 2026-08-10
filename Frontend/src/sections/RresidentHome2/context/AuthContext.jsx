@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin , setIsAdmin] = useState(false)
 
-  useEffect(() => {
+  const fetchUserData = ()=>{
     const token = localStorage.getItem("token");
     if (!token) {
       setIsLoading(false);
@@ -27,6 +27,10 @@ export function AuthProvider({ children }) {
       .then((data) => setUserData(data))
       .catch((err) => console.error("Failed to fetch current user:", err))
       .finally(() => setIsLoading(false));
+  }
+
+  useEffect(() => {
+    fetchUserData()
   }, []);
 
   useEffect(()=>{
@@ -55,7 +59,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ userData,societyData, setUserData, isLoading, logout , isAdmin }}>
+    <AuthContext.Provider value={{ fetchUserData , userData,societyData, setUserData, isLoading, logout , isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

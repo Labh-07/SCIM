@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar, { NAV_SECTIONS } from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import ProfileModal from "../components/layout/ProfileModal";
@@ -36,7 +36,7 @@ const SECTION_COMPONENTS = {
 };
 
 export default function ResidentHome() {
-  const { userData, societyData , logout } = useAuth();
+  const {fetchUserData, userData, societyData , logout } = useAuth();
   const [activeSection, setActiveSection] = useState("dashboard-section");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -47,6 +47,10 @@ export default function ResidentHome() {
     activeSection === "dashboard-section"
       ? "Residents of the society"
       : SECTION_TITLES[activeSection] || "Dashboard";
+
+  useEffect(()=>{
+    fetchUserData();
+  },[])
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-100">

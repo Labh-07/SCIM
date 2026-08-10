@@ -25,7 +25,7 @@ class Society(Base):
     events:Mapped[list["Event"]] = relationship(back_populates="society",cascade="all, delete-orphan")
     posts:Mapped[list["Post"]] = relationship(back_populates="society",cascade="all, delete-orphan")
     complaints:Mapped[list["Complaint"]] = relationship(back_populates="society",cascade="all, delete-orphan")
-
+    services:Mapped[list["Service"]] = relationship(back_populates="society",cascade="all, delete-orphan")
 
 class User(Base):
     __tablename__ = "users"
@@ -50,7 +50,7 @@ class User(Base):
     events:Mapped[list["Event"]] =  relationship(back_populates="author")
     posts:Mapped[list["Post"]] =  relationship(back_populates="author")
     complaints:Mapped[list["Complaint"]] = relationship(back_populates="user")
-                                            
+    services:Mapped[list["Service"]] = relationship(back_populates="user")                                    
 
 class Notice(Base):
     __tablename__="notices"
@@ -126,3 +126,24 @@ class Complaint(Base):
 
     society:Mapped["Society"]=relationship(back_populates="complaints")
     user:Mapped["User"]=relationship(back_populates="complaints")
+
+class Service(Base):
+    __tablename__="services"
+
+    id:Mapped[int]=mapped_column(Integer,primary_key=True,index=True)
+    societyid:Mapped[int]=mapped_column(ForeignKey("society.id"),nullable=False,index=True)
+    userid:Mapped[int]=mapped_column(ForeignKey("users.id"),nullable=False,index=True)
+    servicetype:Mapped[str]=mapped_column(String(50),nullable=False)
+    additionalnote:Mapped[str]=mapped_column(String(500),nullable=True)
+    createdon:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now())
+
+    residentname:Mapped[str]=mapped_column(String(100),nullable=False)
+    block:Mapped[str]=mapped_column(String(5),nullable=False)
+    flatno:Mapped[int]=mapped_column(Integer , nullable=False)
+
+    status:Mapped[str]=mapped_column(String(20),nullable=False)
+    comment:Mapped[str]=mapped_column(String(500),nullable=True)
+    respondon:Mapped[str]=mapped_column(DateTime(timezone=True),nullable=True,default=lambda:datetime.now(UTC))
+
+    society:Mapped["Society"]=relationship(back_populates="services")
+    user:Mapped["User"]=relationship(back_populates="services")

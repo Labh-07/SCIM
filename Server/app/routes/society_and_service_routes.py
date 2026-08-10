@@ -2,9 +2,9 @@ from typing import Annotated
 from fastapi import APIRouter,Depends,status , UploadFile , Form , File
 from fastapi.exceptions import HTTPException
 
-from app.config.schemas import SocietyCreate , SocietyPrivateResponse , SocietyPubliResponse , UserPrivateResponse , UserUpdate,SocietyPubliResponse , SocietyPrivateResponse ,UserPublicResponse , MakeSecratery , NoticeCreate,NoticePublicResponse,EventUpdate,NoticePrivateResponse, EventCreate , EventPublicResponse , EventPrivateResponse , PostPublicResponse , PostPrivateResponse , PostCreate , ComplaintPublicResponse , ComplaintCreate ,ComplaintPrivateResponse , ComplaintUpdate ,complaintStats
+from app.config.schemas import SocietyCreate , SocietyPrivateResponse , SocietyPubliResponse , UserPrivateResponse , UserUpdate,SocietyPubliResponse , SocietyPrivateResponse ,UserPublicResponse , MakeSecratery , NoticeCreate,NoticePublicResponse,EventUpdate,NoticePrivateResponse, EventCreate , EventPublicResponse , EventPrivateResponse , PostPublicResponse , PostPrivateResponse , PostCreate , ComplaintPublicResponse , ComplaintCreate ,ComplaintPrivateResponse , ComplaintUpdate ,complaintStats , ServiceCreate , ServiceAdminResponse , ServicePublicResponse , ServiceUpdate,ServiceStats
 from app.config.database import get_db
-from app.models.model import Society,User,Notice,Event,Post,Complaint
+from app.models.model import Society,User,Notice,Event,Post,Complaint,Service
 from app.config.auth import CurrntUser
 from app.config.config import settings
 from app.config.image_utils import process_post_image,delete_post_image,upload_post_image
@@ -15,7 +15,7 @@ from sqlalchemy import select,func
 from sqlalchemy.orm import joinedload
 
 from botocore.exceptions import ClientError,ValidationError
-
+from datetime import datetime,UTC
 from PIL import UnidentifiedImageError 
 router = APIRouter()
 
@@ -616,3 +616,148 @@ async def delete_complaint(society_id:int,complaint_id:int,current_user:CurrntUs
 
 
 #endregion
+
+#region services 
+
+
+
+@router.post("/{society_id}/services",response_model=ServicePublicResponse,status_code=status.HTTP_201_CREATED,tags=["Services"])
+async def create_service(  
+    society_id: int,   
+    service_data: ServiceCreate,    
+    current_user:CurrntUser,         
+    db:Annotated[AsyncSession,Depends(get_db)],
+  ):
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result =await db.execute(select(User).where(User.id == current_user.id))
+    user_exist = result.scalars().first()
+
+    if not user_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="User not exist")
+        
+    new_service=Service(
+        residentname = current_user.username,
+        servicetype = service_data.servicetype,
+        additionalnote = service_data.additionalnote,
+        block = current_user.block,
+        flatno = current_user.flatno,
+        status="pending",
+
+        userid = current_user.id,
+        societyid = society_id,
+    )
+
+    db.add(new_service)
+    await db.commit()
+    await db.refresh(new_service)
+
+    new_service.user = user_exist 
+    return new_service
+
+@router.get("/{society_id}/services",tags=["Services"])
+async def get_all_services(society_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]) -> list[ServiceAdminResponse] | list[ServicePublicResponse]:
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    if current_user.role.lower() == "admin":
+        result = await db.execute(select(Service).options(joinedload(Service.user)).where(Service.societyid == society_id))
+    
+        return result.scalars().all()
+    else:
+        result = await db.execute(select(Service).options(joinedload(Service.user)).where(Service.societyid == society_id , Service.userid == current_user.id))
+
+        return result.scalars().all()
+
+
+@router.get("/{society_id}/services/stats",status_code=status.HTTP_200_OK,response_model=ServiceStats,tags=["Services"])
+async def get_service_states(society_id:int,db:Annotated[AsyncSession,Depends(get_db)]):
+
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    stats = {
+        "total":0,
+        "pending":0,
+        "approved":0,
+        "rejected":0,
+    }
+
+    result = await db.execute(select(Service).where(Service.societyid == society_id))
+
+    all_services = result.scalars().all()
+
+    stats["total"] = len(all_services)
+
+    for service in all_services:
+        stats[service.status.lower()] = stats[service.status.lower()] + 1  
+
+    return stats
+
+@router.patch("/{society_id}/services/{service_id}",status_code=status.HTTP_200_OK,response_model=ServiceAdminResponse,tags=["Services"])
+async def update_service(society_id:int,service_id:int,service_data:ServiceUpdate,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
+
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update complaint")
+    
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result = await db.execute(select(Service).options(joinedload(Service.user)).where(Service.id == service_id))
+    db_service = result.scalars().first()
+
+    if not db_service:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST ,detail="Service not exist")
+
+    update_service_dict = service_data.model_dump(exclude_unset=True)
+    
+    if not update_service_dict:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+
+    for key,value in update_service_dict.items():
+        setattr(db_service , key , value)
+
+    setattr(db_service,"respondon",datetime.now(UTC))
+    await db.commit()
+    await db.refresh(db_service)
+    
+    return db_service
+
+
+@router.delete("/{society_id}/service/{service_id}",status_code=status.HTTP_200_OK,tags=["Services"])
+async def delete_service(society_id:int,service_id:int,current_user:CurrntUser,db:Annotated[AsyncSession,Depends(get_db)]):
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN , detail="You are unauthorized to update complaint")
+    
+    result =await db.execute(select(Society).where(Society.id == society_id))
+    society_exist = result.scalars().first()
+
+    if not society_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Society Not exist")
+
+    result = await db.execute(select(Service).where(Service.id == service_id))
+    service_exist = result.scalars().first()
+
+    if not service_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST ,detail="Service not exist")
+
+    await db.delete(service_exist)
+    await db.commit()
+
+    return {"message" : "Delete succesfully"}
+ #endregion
+

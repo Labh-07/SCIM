@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { serviceRequestApi } from "../api/serviceRequestApi";
+import { useAuth } from "../context/AuthContext";
 
-export function useServiceRequests(enabled, residentId) {
+export function useServiceRequests( ) {
+  const {isAdmin, userData } = useAuth();
+
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!enabled) return;
     setIsLoading(true);
     setError(null);
     try {
       const data = await serviceRequestApi.getAll(
-        residentId ? { residentId } : undefined
+       userData?.societyid
       );
       setRequests(data);
     } catch (err) {
@@ -21,16 +23,38 @@ export function useServiceRequests(enabled, residentId) {
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, residentId]);
+  }, [ userData]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const submitRequest = async (payload) => {
-    await serviceRequestApi.create(payload);
+    console.log(payload)
+    await serviceRequestApi.create(userData?.societyid,payload);
     await load();
   };
 
-  return { requests, isLoading, error, refetch: load, submitRequest };
+  // Admin-only actions.
+  const approveRequest = async (service_id, adminNotes) => {
+    const updated = await serviceRequestApi.updateService(userData?.societyid,service_id,"approved", adminNotes);
+    setRequests((prev) => prev.map((req) => (req.id === service_id ? updated : req))); // if this not work proper use load
+  };
+
+  const rejectRequest = async (service_id, rejectionReason) => {
+    const updated = await serviceRequestApi.updateService(userData?.societyid , service_id, "rejected", rejectionReason);
+    setRequests((prev) => prev.map((req) => (req.id === service_id ? updated : req)));
+  };
+
+  return {
+    isAdmin, userData,
+
+    requests,
+    isLoading,
+    error,
+    refetch: load,
+    submitRequest,
+    approveRequest,
+    rejectRequest,
+  };
 }

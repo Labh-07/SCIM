@@ -1,12 +1,27 @@
 import axiosClient from "./axiosClient";
 
 export const serviceRequestApi = {
-  getAll: (params) =>
+  getAll: (societyid) =>
     axiosClient
-      .get("/service-requests/all-services", { params })
+      .get(`/api/society/${societyid}/services`)
       .then((res) => res.data),
-  create: (payload) =>
+  getStats: (societyid) =>
     axiosClient
-      .post("/service-requests/add-services", payload)
+      .get(`/api/society/${societyid}/services/stats`)
+      .then((res) => res.data),
+  create: (societyid,payload) =>
+    axiosClient
+      .post(`/api/society/${societyid}/services`, payload)
+      .then((res) => res.data),
+  updateService: (societyid, serviceid, status, comment) =>
+    axiosClient
+      .patch(`/api/society/${societyid}/services/${serviceid}`, {
+        status,
+        comment,
+      })
+      .then((res) => res.data),
+  deleteComplaint: (societyid, serviceid) =>
+    axiosClient
+      .delete(`/api/society/${societyid}/services/${serviceid}`)
       .then((res) => res.data),
 };

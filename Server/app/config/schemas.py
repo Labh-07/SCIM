@@ -153,6 +153,7 @@ class PostPrivateResponse(PostPublicResponse):
     pass
 #endregion
 
+#region complaint
 class ComplaintBase(BaseModel):
     residentname:str|None
     title:str = Field(min_length=1,max_length=100)
@@ -186,3 +187,41 @@ class ComplaintPublicResponse(ComplaintBase):
 
 class ComplaintPrivateResponse(ComplaintPublicResponse):
     pass
+#endregion
+
+#region services
+
+
+class ServiceBase(BaseModel):
+    servicetype:str = Field(min_length=1,max_length=50)
+    additionalnote:str = Field(min_length=1,max_length=500)
+
+class ServiceStats(BaseModel):
+    pending:int
+    approved:int
+    rejected:int
+    
+class ServiceCreate(ServiceBase):
+    pass
+
+class ServiceUpdate(BaseModel):
+    status:str|None
+    comment:str|None
+
+class ServicePublicResponse(ServiceBase):
+    model_config=ConfigDict(from_attributes=True)
+
+    id:int
+    createdon:datetime
+    status:str|None
+    comment:str|None
+    respondon:datetime|None
+    
+
+class ServiceAdminResponse(ServicePublicResponse):
+    residentname:str|None
+    block:str
+    flatno:int
+
+
+#endregion
